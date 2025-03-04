@@ -32,8 +32,8 @@ ClipMaster Pro is built using:
 
 ### Clone the Repository
 ```sh
-git clone https://github.com/yourusername/ClipMaster_Pro.git
-cd ClipMaster_Pro
+git clone https://github.com/Naeem-360/Clip-Master-Pro.git
+cd Clip-Master-Pro
 ```
 
 ### Install Dependencies
