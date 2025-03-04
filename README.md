@@ -32,7 +32,7 @@ ClipMaster Pro is built using:
 
 ### Clone the Repository
 ```sh
-git clone https://github.com/Naeem-360/Clip-Master-Pro.git
+git clone https://github.com/Naeem-360/Clip-Mater-Pro.git
 cd Clip-Master-Pro
 ```
 
