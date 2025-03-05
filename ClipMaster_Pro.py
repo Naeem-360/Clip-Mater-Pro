@@ -29,6 +29,7 @@ class ClipboardGUI(QWidget):
     def __init__(self):
         super().__init__()
         self.old_pos = None
+        self.click_start_pos = None
         self.is_shrunk = False
         self.shrunk_size = (80, 80)
         self.resizing = False
@@ -154,9 +155,15 @@ class ClipboardGUI(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self.old_pos = event.globalPos()
+            pos = event.pos()
+            child = self.childAt(pos)
+            is_over_button = child in (self.clear_btn, self.stop_btn, self.shrink_btn)
+            
+            if not is_over_button:
+                self.old_pos = event.globalPos()
+                self.click_start_pos = event.globalPos()
+
             if not self.is_shrunk:
-                pos = event.pos()
                 self.resize_edge = self.get_resize_edge(pos)
                 if self.resize_edge:
                     self.resizing = True
@@ -167,59 +174,78 @@ class ClipboardGUI(QWidget):
 
     def mouseMoveEvent(self, event):
         pos = event.pos()
-        self.update_cursor(pos)
+        self.update_cursor(pos)  
 
         if self.old_pos is not None:
-            delta = event.globalPos() - self.old_pos
-            if self.is_shrunk:
-                self.move(self.x() + delta.x(), self.y() + delta.y())
-                self.old_pos = event.globalPos()
-            elif self.resizing and self.resize_edge and self.resize_start_pos:
-                delta_resize = event.globalPos() - self.resize_start_pos
-                rect = QRect(self.original_geometry)
+            child = self.childAt(pos)
+            is_over_button = child in (self.clear_btn, self.stop_btn, self.shrink_btn)
+            
+            if not is_over_button:
+                delta = event.globalPos() - self.old_pos
+                if self.is_shrunk:
+                    self.move(self.x() + delta.x(), self.y() + delta.y())
+                    self.old_pos = event.globalPos()
+                elif self.resizing and self.resize_edge and self.resize_start_pos:
+                    delta_resize = event.globalPos() - self.resize_start_pos
+                    rect = QRect(self.original_geometry)
 
-                if self.resize_edge & Qt.LeftEdge:
-                    rect.setLeft(rect.left() + delta_resize.x())
-                if self.resize_edge & Qt.RightEdge:
-                    rect.setRight(rect.right() + delta_resize.x())
-                if self.resize_edge & Qt.TopEdge:
-                    rect.setTop(rect.top() + delta_resize.y())
-                if self.resize_edge & Qt.BottomEdge:
-                    rect.setBottom(rect.bottom() + delta_resize.y())
+                    if self.resize_edge & Qt.LeftEdge:
+                        rect.setLeft(rect.left() + delta_resize.x())
+                    if self.resize_edge & Qt.RightEdge:
+                        rect.setRight(rect.right() + delta_resize.x())
+                    if self.resize_edge & Qt.TopEdge:
+                        rect.setTop(rect.top() + delta_resize.y())
+                    if self.resize_edge & Qt.BottomEdge:
+                        rect.setBottom(rect.bottom() + delta_resize.y())
 
-                if rect.width() >= self.minimumWidth() and rect.height() >= self.minimumHeight():
-                    self.setGeometry(rect)
-                    self.main_widget.resize(self.size())
-            else:
-                self.move(self.x() + delta.x(), self.y() + delta.y())
-                self.old_pos = event.globalPos()
+                    if rect.width() >= self.minimumWidth() and rect.height() >= self.minimumHeight():
+                        self.setGeometry(rect)
+                        self.main_widget.resize(self.size())
+                else:
+                    self.move(self.x() + delta.x(), self.y() + delta.y())
+                    self.old_pos = event.globalPos()
 
     def mouseReleaseEvent(self, event):
-        if self.is_shrunk and self.old_pos is not None:
-            delta = event.globalPos() - self.old_pos
-            if abs(delta.x()) < 5 and abs(delta.y()) < 5: 
-                self.toggle_shrink()
-        self.old_pos = None
+        if event.button() == Qt.LeftButton and self.is_shrunk:
+            if self.click_start_pos is not None:
+                delta = event.globalPos() - self.click_start_pos
+                if abs(delta.x()) < 5 and abs(delta.y()) < 5:
+                    self.toggle_shrink()
+            self.old_pos = None
+            self.click_start_pos = None
         self.resize_start_pos = None
         self.resize_edge = None
         self.resizing = False
         self.update_cursor(event.pos())
+        QApplication.processEvents()  
 
     def update_cursor(self, pos):
         if self.is_shrunk:
-            self.setCursor(Qt.OpenHandCursor)  
+            self.setCursor(Qt.OpenHandCursor)
+        
         else:
-            edge = self.get_resize_edge(pos)
-            if edge == (Qt.LeftEdge | Qt.TopEdge) or edge == (Qt.RightEdge | Qt.BottomEdge):
-                self.setCursor(Qt.SizeFDiagCursor)
-            elif edge == (Qt.RightEdge | Qt.TopEdge) or edge == (Qt.LeftEdge | Qt.BottomEdge):
-                self.setCursor(Qt.SizeBDiagCursor)
-            elif edge == Qt.LeftEdge or edge == Qt.RightEdge:
-                self.setCursor(Qt.SizeHorCursor)
-            elif edge == Qt.TopEdge or edge == Qt.BottomEdge:
-                self.setCursor(Qt.SizeVerCursor)
-            else:
+            child = self.childAt(pos)
+            is_over_button = child in (self.clear_btn, self.stop_btn, self.shrink_btn)
+            if is_over_button:
                 self.setCursor(Qt.ArrowCursor)
+               
+            else:
+                edge = self.get_resize_edge(pos)
+                if edge == (Qt.LeftEdge | Qt.TopEdge) or edge == (Qt.RightEdge | Qt.BottomEdge):
+                    self.setCursor(Qt.SizeFDiagCursor)
+                    
+                elif edge == (Qt.RightEdge | Qt.TopEdge) or edge == (Qt.LeftEdge | Qt.BottomEdge):
+                    self.setCursor(Qt.SizeBDiagCursor)
+                  
+                elif edge == Qt.LeftEdge or edge == Qt.RightEdge:
+                    self.setCursor(Qt.SizeHorCursor)
+                   
+                elif edge == Qt.TopEdge or edge == Qt.BottomEdge:
+                    self.setCursor(Qt.SizeVerCursor)
+                   
+                else:
+                    self.setCursor(Qt.ArrowCursor)
+                
 
     def get_resize_edge(self, pos):
         edge = 0
@@ -264,6 +290,7 @@ class ClipboardGUI(QWidget):
             self.original_geometry = self.geometry()
             self.resize(*self.shrunk_size)
             self.main_widget.hide()
+            self.shrink_btn.setText("Expand")
             self.is_shrunk = True
         self.update()
 
